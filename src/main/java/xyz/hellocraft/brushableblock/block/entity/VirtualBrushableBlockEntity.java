@@ -43,7 +43,7 @@ public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
             if (count < totalBrushes) {
                 accessor.setBrushCount(count + 1);
             }
-            return true;
+            return false;
         }
 
         // Server side
@@ -60,7 +60,7 @@ public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
 
         if (count < totalBrushes) {
             accessor.setBrushCount(count + 1);
-            return true;
+            return false;
         }
 
         // Drop item
@@ -83,14 +83,14 @@ public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
             double y = (double)this.worldPosition.getY() + 0.5D + (double)dropDir.getStepY() * 0.35D;
             double z = (double)this.worldPosition.getZ() + 0.5D + (double)dropDir.getStepZ() * 0.35D;
             
-            // If transformation changed the block, the BE might be invalid now, but we are a virtual BE 
-            // from BrushingManager, so we can still finish our logic.
             net.minecraft.world.entity.item.ItemEntity itemEntity = new net.minecraft.world.entity.item.ItemEntity(this.level, x, y, z, stack.copy());
             itemEntity.setDefaultPickUpDelay();
             this.level.addFreshEntity(itemEntity);
             accessor.setBrushedItem(ItemStack.EMPTY);
             // Final sync to clear the item on clients
             this.level.sendBlockUpdated(this.worldPosition, this.originalState, this.originalState, 3);
+            
+            return true; // Return true only when successfully finished to consume 1 durability
         }
 
         return false;
