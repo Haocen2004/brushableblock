@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "xyz.hellocraft.brushableblock.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BrushItemMixin",
+    "BlockEntityTypeMixin",
+    "BrushableBlockEntityAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

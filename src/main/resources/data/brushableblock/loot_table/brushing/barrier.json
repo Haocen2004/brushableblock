@@ -1,0 +1,20 @@
+{
+    "type": "minecraft:archaeology",
+    "pools": [
+        {
+            "rolls": 1,
+            "entries": [
+                {
+                    "type": "minecraft:item",
+                    "name": "minecraft:diamond"
+                }
+            ],
+            "functions": [
+                {
+                    "function": "brushableblock:set_transformed_block",
+                    "block": "minecraft:bedrock"
+                }
+            ]
+        }
+    ]
+}
