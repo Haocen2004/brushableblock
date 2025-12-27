@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.level.block.entity.BrushableBlockEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -38,7 +39,7 @@ public class ClientEvents {
                                        pos.getY() - event.getCamera().getPosition().y, 
                                        pos.getZ() - event.getCamera().getPosition().z);
                     int light = net.minecraft.client.renderer.LevelRenderer.getLightColor(mc.level, pos);
-                    renderer.render(be, event.getPartialTick().getGameTimeDeltaTicks(), poseStack, bufferSource, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+                    renderer.render(be, event.getPartialTick().getGameTimeDeltaTicks(), poseStack, bufferSource, light, OverlayTexture.NO_OVERLAY);
                     poseStack.popPose();
                 }
             }
