@@ -1,8 +1,14 @@
+import com.modrinth.minotaur.TaskModrinthUpload
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
+
 plugins {
     id 'java-library'
     id 'maven-publish'
     id 'net.neoforged.gradle.userdev' version '7.1.13'
+    id 'net.darkhax.curseforgegradle' version '1.1.28'
+    id 'com.modrinth.minotaur' version '2.8.0'
 }
+
 
 tasks.named('wrapper', Wrapper).configure {
     // Define wrapper values here so as to not have to always do so when updating gradlew.properties.
@@ -16,9 +22,6 @@ tasks.named('wrapper', Wrapper).configure {
 version = mod_version
 group = mod_group_id
 
-repositories {
-    // Add here additional repositories if required by some of the dependencies below.
-}
 
 base {
     archivesName = mod_id
@@ -187,4 +190,42 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+def tokenProps = new Properties()
+def tokenFile = file("token.properties")
+if (tokenFile.exists()) {
+    tokenFile.withInputStream { tokenProps.load(it) }
+}
+
+def modrinthToken = tokenProps.getProperty("MODRINTH_TOKEN") ?: System.getenv("MODRINTH_TOKEN")
+def curseforgeToken = tokenProps.getProperty("CURSEFORGE_TOKEN") ?: System.getenv("CURSEFORGE_TOKEN")
+
+tasks.withType(TaskModrinthUpload).configureEach {
+    notCompatibleWithConfigurationCache("Minotaur task uses Project at execution time")
+}
+modrinth {
+    token = modrinthToken
+    projectId = "DmgY3fwb"
+    versionName = project.version
+    versionType ="release"
+    uploadFile = jar
+    gameVersions = ["1.21.1"]
+    loaders = ["neoforge"]
+}
+
+tasks.register('publishCurseForge', TaskPublishCurseForge) {
+
+    apiToken = curseforgeToken
+
+    def mainFile = upload(1414396, jar)
+    mainFile.addModLoader('NeoForge')
+    mainFile.releaseType = 'release'
+    mainFile.addGameVersion('Client', 'Server')
+    mainFile.changelog = "Release of version ${project.version}."
+
+}
+
+tasks.register("publishMods") {
+    dependsOn("modrinth", "publishCurseForge")
 }
