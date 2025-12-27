@@ -3,12 +3,16 @@ package xyz.hellocraft.brushableblock.block.entity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BrushableBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor;
 
 public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
@@ -22,7 +26,7 @@ public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
     }
 
     @Override
-    public BlockState getBlockState() {
+    public @NotNull BlockState getBlockState() {
         // Trick the renderer by returning a state that has the 'dusted' property
         // We use suspicious sand as a template
         int count = ((BrushableBlockEntityAccessor)this).getBrushCount();
@@ -78,19 +82,21 @@ public class VirtualBrushableBlockEntity extends BrushableBlockEntity {
                 }
             }
 
-            Direction dropDir = direction.getOpposite();
-            double x = (double)this.worldPosition.getX() + 0.5D + (double)dropDir.getStepX() * 0.35D;
-            double y = (double)this.worldPosition.getY() + 0.5D + (double)dropDir.getStepY() * 0.35D;
-            double z = (double)this.worldPosition.getZ() + 0.5D + (double)dropDir.getStepZ() * 0.35D;
+            if (!stack.isEmpty()) {
+                double d0 = EntityType.ITEM.getWidth();
+                double d1 = 1.0 - d0;
+                double d2 = d0 / 2.0;
+                BlockPos blockpos = this.worldPosition.relative(direction, 1);
+                double d3 = (double) blockpos.getX() + 0.5 * d1 + d2;
+                double d4 = (double) blockpos.getY() + 0.5 + (double) (EntityType.ITEM.getHeight() / 2.0F);
+                double d5 = (double) blockpos.getZ() + 0.5 * d1 + d2;
+                ItemEntity itementity = new ItemEntity(this.level, d3, d4, d5, stack.split(this.level.random.nextInt(21) + 10));
+                itementity.setDeltaMovement(Vec3.ZERO);
+                this.level.addFreshEntity(itementity);
+                accessor.setBrushedItem(ItemStack.EMPTY);
+            }
             
-            net.minecraft.world.entity.item.ItemEntity itemEntity = new net.minecraft.world.entity.item.ItemEntity(this.level, x, y, z, stack.copy());
-            itemEntity.setDefaultPickUpDelay();
-            this.level.addFreshEntity(itemEntity);
-            accessor.setBrushedItem(ItemStack.EMPTY);
-            // Final sync to clear the item on clients
-            this.level.sendBlockUpdated(this.worldPosition, this.originalState, this.originalState, 3);
-            
-            return true; // Return true only when successfully finished to consume 1 durability
+            return true;
         }
 
         return false;

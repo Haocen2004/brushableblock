@@ -14,14 +14,11 @@ import xyz.hellocraft.brushableblock.block.BrushingManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 //import static xyz.hellocraft.brushableblock.BrushableBlock.LOGGER;
 
 @EventBusSubscriber(modid = BrushableBlock.MODID)
 public class CommonEvents {
-//    public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS = DeferredRegister.create(BuiltInRegistries.RECIPE_SERIALIZER, "jearchaeology");
-//    public static final DeferredRegister<RecipeType<?>> JEA_RECIPE_TYPES = DeferredRegister.create(Registries.RECIPE_TYPE, "jearchaeology");
-//    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<BrushingRecipe>> BRUSH = RECIPE_SERIALIZERS.register("brush", BrushingRecipe.Serializer::new);
-//    public static DeferredHolder<RecipeType<?>, RecipeType<BrushingRecipe>> BRUSH_TYPE = JEA_RECIPE_TYPES.register("brush", () -> new RecipeType<>() {});
 
     @SubscribeEvent
     public static void onLevelTick(LevelTickEvent.Post event) {
@@ -42,8 +39,10 @@ public class CommonEvents {
 //            LOGGER.info("Find {} brushing recipes to player {}", brushRecipes.size(), player.get().getName().getString());
                 Collection<RecipeHolder<?>> allRecipes = new ArrayList<>(recipeManager.getRecipes());
 //              allRecipes.addAll(brushRecipes);
-                allRecipes.addAll(BrushingManager.getAllBrushingRecipes(event.getPlayerList().getServer().getLevel(Level.OVERWORLD)));
+                List<RecipeHolder<?>> brushingRecipes = BrushingManager.getAllBrushingRecipes(event.getPlayerList().getServer().getLevel(Level.OVERWORLD));
+                allRecipes.addAll(brushingRecipes);
                 recipeManager.replaceRecipes(allRecipes);
+                BrushableBlock.LOGGER.debug("JEArchaeology loaded, inject {} recipes for player {}", brushingRecipes.size(), player.get().getName().getString());
 
 //            var newBrushRecipes = recipeManager.getAllRecipesFor(BRUSH_TYPE.get());
 //            LOGGER.info("After sync, player {} has {} brushing recipes", player.get().getName().getString(), newBrushRecipes.size());

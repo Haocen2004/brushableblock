@@ -9,6 +9,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -16,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BrushableBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -26,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import xyz.hellocraft.brushableblock.BrushableBlock;
 import xyz.hellocraft.brushableblock.block.entity.VirtualBrushableBlockEntity;
+import xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor;
 import xyz.hellocraft.brushableblock.tag.ModTags;
 
 import java.nio.charset.StandardCharsets;
@@ -49,18 +52,45 @@ public class BrushingManager {
         return VIRTUAL_ENTITIES.computeIfAbsent(immutablePos, p -> {
             VirtualBrushableBlockEntity be = new VirtualBrushableBlockEntity(p, state);
             be.setLevel(level);
-            
-            // Set loot table based on block id: brushableblock:brushing/<block_path>
-            net.minecraft.resources.ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
-            net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> lootTableKey = 
-                net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.LOOT_TABLE, 
-                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(BrushableBlock.MODID, "brushing/" + blockId.getPath()));
 
-            ((xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor)be).setLootTable(lootTableKey);
+            ResourceKey<LootTable> lootTableKey = getLootTableForBlock(level, state.getBlock());
+
+            ((BrushableBlockEntityAccessor)be).setLootTable(lootTableKey);
             
             return be;
         });
     }
+
+    private static ResourceKey<LootTable> getLootTableForBlock(Level level, Block block) {
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+        ResourceKey<LootTable> key = ResourceKey.create(Registries.LOOT_TABLE,
+            ResourceLocation.fromNamespaceAndPath(BrushableBlock.MODID, "brushing/" + blockId.getPath()));
+        // check if loot table exists, else return empty
+        if (level.getServer() != null) {
+            ReloadableServerRegistries.Holder reloadableRegistries = level.getServer().reloadableRegistries();
+            LootTable lootTable = reloadableRegistries.getLootTable(key);
+            if (lootTable.equals(LootTable.EMPTY)) {
+                ResourceKey<LootTable> key1 = ResourceKey.create(Registries.LOOT_TABLE,
+                        ResourceLocation.fromNamespaceAndPath(BrushableBlock.MODID, "brushing/" + blockId.getNamespace() + '/' + blockId.getPath())
+                );
+                LootTable lootTable1 = reloadableRegistries.getLootTable(key1);
+                if (lootTable1.equals(LootTable.EMPTY)) {
+                    BrushableBlock.LOGGER.error(
+                            blockId + " does not have a brushing loot table defined! Returning empty loot table."
+                    );
+                    return ResourceKey.create(Registries.LOOT_TABLE,
+                            ResourceLocation.fromNamespaceAndPath(BrushableBlock.MODID, "brushing/empty"));
+                } else {
+                    return key1;
+                }
+            }
+        }
+        return key;
+
+
+    }
+
+
 
 
     public static Map<BlockPos, BrushableBlockEntity> getActiveEntities() {
@@ -78,7 +108,7 @@ public class BrushingManager {
             long idleTicks = time - lastTime;
             
             if (idleTicks > 40) { // Start shrinking after 2 seconds of inactivity
-                xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor accessor = (xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor) be;
+                BrushableBlockEntityAccessor accessor = (BrushableBlockEntityAccessor) be;
                 int count = accessor.getBrushCount();
                 if (count > 0) {
                     if (time % 5 == 0) accessor.setBrushCount(count - 1);
@@ -97,7 +127,7 @@ public class BrushingManager {
             BrushableBlockEntity be = VIRTUAL_ENTITIES.get(pos);
             
             if (be != null && be.getLevel() == level) {
-                int count = ((xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor)be).getBrushCount();
+                int count = ((BrushableBlockEntityAccessor)be).getBrushCount();
                 long idleTicks = time - entry.getValue();
                 
                 if (count == 0 && idleTicks > 40) {
@@ -119,7 +149,7 @@ public class BrushingManager {
 
             // get all tagged block
             BuiltInRegistries.BLOCK.getTag(ModTags.Blocks.BRUSHABLE).ifPresent(tag -> tag.forEach(block -> {
-                ResourceKey<LootTable> lootTableKey = ResourceKey.create(Registries.LOOT_TABLE, ResourceLocation.fromNamespaceAndPath(BrushableBlock.MODID, "brushing/" + BuiltInRegistries.BLOCK.getKey(block.value()).getPath()));
+                ResourceKey<LootTable> lootTableKey = getLootTableForBlock(level, block.value());
                 if (!tables.containsKey(lootTableKey)) {
                     tables.put(lootTableKey, Pair.of(BuiltInRegistries.BLOCK.getKey(block.value()).getPath(), Ingredient.of(block.value().asItem())));
                 }

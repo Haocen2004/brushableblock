@@ -1,6 +1,11 @@
 package xyz.hellocraft.brushableblock.mixin;
 
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BrushableBlockEntity;
+import net.minecraft.world.level.storage.loot.LootTable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
@@ -8,7 +13,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface BrushableBlockEntityAccessor {
 
     @Accessor("lootTable")
-    void setLootTable(net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> lootTable);
+    void setLootTable(ResourceKey<LootTable> lootTable);
 
     @Accessor("brushCount")
     int getBrushCount();
@@ -17,8 +22,8 @@ public interface BrushableBlockEntityAccessor {
     void setBrushCount(int count);
 
     @Accessor("item")
-    void setBrushedItem(net.minecraft.world.item.ItemStack item);
+    void setBrushedItem(ItemStack item);
 
     @Accessor("hitDirection")
-    void setHitDirection(net.minecraft.core.Direction direction);
+    void setHitDirection(Direction direction);
 }
