@@ -23,7 +23,17 @@ Replace block with function `brushableblock:set_transformed_block`
             "functions": [
                 {
                     "function": "brushableblock:set_transformed_block",
-                    "block": "minecraft:bedrock"
+                    "block": "minecraft:chest",
+                    "properties": {
+                        "waterlogged": true,
+                        "facing": "south"
+                    },
+                    "components": {
+                      "minecraft:custom_name": "'Components Test Chest'",
+                      "minecraft:container_loot": {
+                        "loot_table": "minecraft:chests/simple_dungeon"
+                      }
+                    }
                 }
             ]
         }
