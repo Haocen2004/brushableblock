@@ -30,4 +30,3 @@ Replace block with function `brushableblock:set_transformed_block`
     ]
 }
 ```
-

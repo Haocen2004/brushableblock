@@ -125,22 +125,30 @@ public class BrushingManager {
             }
         });
 
-        // 2. Cleanup entities that are fully shrunk (count 0) and idle for 10+ ticks
+        // 2. Cleanup entities that are idle or finished
         LAST_ACCESS.entrySet().removeIf(entry -> {
             BlockPos pos = entry.getKey();
             BrushableBlockEntity be = VIRTUAL_ENTITIES.get(pos);
             
             if (be != null && be.getLevel() == level) {
-                int count = ((BrushableBlockEntityAccessor)be).getBrushCount();
+                BrushableBlockEntityAccessor accessor = (BrushableBlockEntityAccessor) be;
+                int count = accessor.getBrushCount();
                 long idleTicks = time - entry.getValue();
                 
+                // If it's fully brushed (no item left and count is max), remove it immediately
+                if (be.getItem().isEmpty() && count >= 8) {
+                    VIRTUAL_ENTITIES.remove(pos);
+                    return true;
+                }
+
+                // Normal idle cleanup for partially brushed blocks
                 if (count == 0 && idleTicks > 40) {
                     VIRTUAL_ENTITIES.remove(pos);
                     return true;
                 }
                 return false;
             }
-            return be == null; // Clean up entry if BE is gone
+            return be == null;
         });
     }
 

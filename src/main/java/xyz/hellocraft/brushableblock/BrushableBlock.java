@@ -14,5 +14,6 @@ public class BrushableBlock {
 
     public BrushableBlock(IEventBus modEventBus, ModContainer modContainer) {
         xyz.hellocraft.brushableblock.registration.ModContent.register(modEventBus);
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.COMMON, xyz.hellocraft.brushableblock.config.ModConfig.SPEC);
     }
 }

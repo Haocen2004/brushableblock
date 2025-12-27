@@ -20,6 +20,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import xyz.hellocraft.brushableblock.BrushableBlock;
 import xyz.hellocraft.brushableblock.block.BrushingManager;
+import xyz.hellocraft.brushableblock.block.entity.VirtualBrushableBlockEntity;
 import xyz.hellocraft.brushableblock.mixin.BrushableBlockEntityAccessor;
 import xyz.hellocraft.brushableblock.tag.ModTags;
 
@@ -40,7 +41,11 @@ public class ClientEvents {
 
         BrushingManager.getActiveEntities().forEach((pos, be) -> {
             BlockState state = mc.level.getBlockState(pos);
-            if (state.is(ModTags.Blocks.BRUSHABLE)) {
+            // Render if the block is natively brushable OR if there's an active virtual entity already managing it
+            // (Allows the overlay/item to linger for a moment even if the block transformed)
+            boolean isBrushable = state.is(ModTags.Blocks.BRUSHABLE);
+            
+            if (isBrushable || be instanceof VirtualBrushableBlockEntity) {
                 
                 // 1. Render the emerging item (Vanilla behavior)
                 @SuppressWarnings("unchecked")
@@ -56,20 +61,24 @@ public class ClientEvents {
                 }
 
                 // 2. Render breaking cracks overlay mapping brushCount to 0-3 stages (then to 0-9 crack levels)
+                xyz.hellocraft.brushableblock.config.ModConfig.OverlayMode mode = xyz.hellocraft.brushableblock.config.ModConfig.OVERLAY_MODE.get();
+                if (mode == xyz.hellocraft.brushableblock.config.ModConfig.OverlayMode.NONE) {
+                    return;
+                }
+
                 BrushableBlockEntityAccessor accessor = (BrushableBlockEntityAccessor) be;
                 int count = accessor.getBrushCount();
                 if (count > 0) {
-                    // perStage is 2 in VirtualBrushableBlockEntity, totalBrushes is 8.
-                    // Map count to 0-3 dusted stages, then scaled to 0-9 breaking stages.
-                    int dustedStage = Math.min(3, count / 2); 
-                    int breakProgress = Math.min(9, dustedStage * 3);
+                    // perStage is 2 in VirtualBrushableBlockEntity, max is 8.
+                    // Map count to 0-3 stages to match archaeology 'dusted' property.
+                    int stage = Math.min(3, count / 2); 
 
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - event.getCamera().getPosition().x, 
                                        pos.getY() - event.getCamera().getPosition().y, 
                                        pos.getZ() - event.getCamera().getPosition().z);
                     
-                    renderBlockWithCracks(state, pos, mc, poseStack, bufferSource, breakProgress);
+                    renderBlockWithCracks(state, pos, mc, poseStack, bufferSource, stage);
 
                     poseStack.popPose();
                 }
@@ -77,13 +86,24 @@ public class ClientEvents {
         });
     }
 
-    private static void renderBlockWithCracks(BlockState state, BlockPos pos, Minecraft mc, PoseStack poseStack, MultiBufferSource bufferSource, int breakProgress) {
-        Object typeObj = ModelBakery.DESTROY_TYPES.get(breakProgress);
-        net.minecraft.client.renderer.RenderType crumblingType;
-        if (typeObj instanceof net.minecraft.client.renderer.RenderType) {
-            crumblingType = (net.minecraft.client.renderer.RenderType) typeObj;
+    private static void renderBlockWithCracks(BlockState state, BlockPos pos, Minecraft mc, PoseStack poseStack, MultiBufferSource bufferSource, int stage) {
+        net.minecraft.client.renderer.RenderType overlayType;
+
+        if (xyz.hellocraft.brushableblock.config.ModConfig.OVERLAY_MODE.get() == xyz.hellocraft.brushableblock.config.ModConfig.OverlayMode.VANILLA) {
+            // Map 0-3 stages to 0-9 vanilla breaking stages
+            int vanillaStage = Math.min(9, stage * 3);
+            Object typeObj = ModelBakery.DESTROY_TYPES.get(vanillaStage);
+            if (typeObj instanceof net.minecraft.client.renderer.RenderType) {
+                overlayType = (net.minecraft.client.renderer.RenderType) typeObj;
+            } else {
+                overlayType = net.minecraft.client.renderer.RenderType.crumbling((net.minecraft.resources.ResourceLocation) typeObj);
+            }
         } else {
-            crumblingType = net.minecraft.client.renderer.RenderType.crumbling((net.minecraft.resources.ResourceLocation) typeObj);
+            // Support custom textures: brushableblock:textures/gui/brushing_overlay_<0-3>.png
+            // Note: Customs use 'crumbling' RenderType to get the same blending effect
+            net.minecraft.resources.ResourceLocation customLoc = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                BrushableBlock.MODID, "textures/block/brushing_overlay_" + stage + ".png");
+            overlayType = net.minecraft.client.renderer.RenderType.crumbling(customLoc);
         }
 
         // Restore micro-scaling to definitively fix Z-fighting
@@ -91,7 +111,7 @@ public class ClientEvents {
         poseStack.translate(-0.0005, -0.0005, -0.0005);
 
         VertexConsumer decalConsumer = new SheetedDecalTextureGenerator(
-            bufferSource.getBuffer(crumblingType), 
+            bufferSource.getBuffer(overlayType), 
             poseStack.last(), 1.0F
         );
 
@@ -101,7 +121,7 @@ public class ClientEvents {
         BlockPos lightPos = (hitDir != null) ? pos.relative(hitDir) : pos.above();
         int light = net.minecraft.client.renderer.LevelRenderer.getLightColor(mc.level, lightPos);
         
-        // Only render the decal part. This overlays the cracks without re-rendering the base block colors.
+        // Only render the decal part.
         MultiBufferSource progressOnlyBuffer = type -> decalConsumer;
 
         mc.getBlockRenderer().renderSingleBlock(
