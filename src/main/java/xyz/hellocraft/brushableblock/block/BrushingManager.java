@@ -93,6 +93,10 @@ public class BrushingManager {
 
 
 
+    public static BrushableBlockEntity getVirtualEntity(BlockPos pos) {
+        return VIRTUAL_ENTITIES.get(pos);
+    }
+
     public static Map<BlockPos, BrushableBlockEntity> getActiveEntities() {
         return VIRTUAL_ENTITIES;
     }
